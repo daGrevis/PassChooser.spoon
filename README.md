@@ -11,6 +11,6 @@ Make sure you have working [`pass`](https://www.passwordstore.org/), `gpg-agent`
 ```lua
 local passchooser = require "passchooser/passchooser"
 
-passchooser.bind({"cmd"}, "p")
--- passchooser.bind()
+passchooser.bind()
+-- passchooser.bind({"cmd"}, "p")
 ```
