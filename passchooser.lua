@@ -1,5 +1,48 @@
+-- http://lua-users.org/wiki/StringRecipes
 function string.ends(String, End)
    return End == '' or string.sub(String, -string.len(End)) == End
+end
+
+-- https://gist.github.com/Badgerati/3261142
+function string.levenshtein(str1, str2)
+  local len1 = string.len(str1)
+  local len2 = string.len(str2)
+  local matrix = {}
+  local cost = 0
+
+  -- quick cut-offs to save time
+  if (len1 == 0) then
+    return len2
+  elseif (len2 == 0) then
+    return len1
+  elseif (str1 == str2) then
+    return 0
+  end
+
+  -- initialise the base matrix values
+  for i = 0, len1, 1 do
+    matrix[i] = {}
+    matrix[i][0] = i
+  end
+  for j = 0, len2, 1 do
+    matrix[0][j] = j
+  end
+
+  -- actual Levenshtein algorithm
+  for i = 1, len1, 1 do
+    for j = 1, len2, 1 do
+      if (str1:byte(i) == str2:byte(j)) then
+        cost = 0
+      else
+        cost = 1
+      end
+
+      matrix[i][j] = math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + cost)
+    end
+  end
+
+  -- return the last value - this is the Levenshtein distance
+  return matrix[len1][len2]
 end
 
 local mod = {}
@@ -37,15 +80,33 @@ function mod.passchooser()
 
   local choices = {}
   chooser:queryChangedCallback(function()
-    local q = chooser:query()
+    local query = chooser:query()
 
-    local foundItems = hs.fnutils.filter(items, function(item)
-      return item:find(q)
+    local chars = {}
+    for i = 1, #query do
+      table.insert(chars, query:sub(i, i))
+    end
+
+    -- http://lua-users.org/wiki/PatternsTutorial
+    local fuzzy_query = table.concat(chars, '.-')
+
+    local found_items = hs.fnutils.filter(items, function(item)
+      return item:find(fuzzy_query)
     end)
 
-    choices = hs.fnutils.map(foundItems, function(item)
-      return { text=item }
-    end)
+    local weighted_items = {}
+    for i, item in pairs(found_items) do
+      weighted_items[item] = item:levenshtein(query)
+    end
+
+    local sorted_items = hs.fnutils.sortByKeyValues(weighted_items)
+
+    local new_choices = {}
+    for item in sorted_items do
+      table.insert(new_choices, { text=item })
+    end
+
+    choices = new_choices
 
     chooser:choices(choices)
   end)
