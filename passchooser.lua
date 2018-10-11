@@ -3,6 +3,30 @@ function string.ends(String, End)
    return End == '' or string.sub(String, -string.len(End)) == End
 end
 
+-- https://stackoverflow.com/a/15706820
+function spairs(t, order)
+    -- collect the keys
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    -- if order function given, sort by it by passing the table and keys a, b,
+    -- otherwise just sort the keys 
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    -- return the iterator function
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
 -- https://gist.github.com/Badgerati/3261142
 function string.levenshtein(str1, str2)
   local len1 = string.len(str1)
@@ -56,18 +80,20 @@ function mod.passchooser()
     return line ~= '' and not line:ends('.gpg-id')
   end)
 
-  local items = hs.fnutils.map(lines, function(line)
+  local all_texts = hs.fnutils.map(lines, function(line)
     local filename = hs.fnutils.split(line, '//')[2]
     return filename:sub(0, filename:len() - 4)
   end)
 
   function restore()
-    if enterBind then enterBind:delete() end
-    if escapeBind then escapeBind:delete() end
-    if ccBind then ccBind:delete() end
+    if enterBind['delete'] then enterBind:delete() end
+    if escapeBind['delete'] then escapeBind:delete() end
+    if ccBind['delete'] then ccBind:delete() end
     if numberBinds then
       for i, bind in pairs(numberBinds) do
-        bind:delete()
+        if bind['delete'] then
+          bind:delete()
+        end
       end
     end
 
@@ -90,23 +116,34 @@ function mod.passchooser()
     -- http://lua-users.org/wiki/PatternsTutorial
     local fuzzy_query = table.concat(chars, '.-')
 
-    local found_items = hs.fnutils.filter(items, function(item)
-      return item:find(fuzzy_query)
+    local matching_texts = hs.fnutils.filter(all_texts, function(text)
+      return text:find(fuzzy_query)
     end)
 
-    local weighted_items = {}
-    for i, item in pairs(found_items) do
-      weighted_items[item] = item:levenshtein(query)
+    local items = {}
+    for i, text in pairs(matching_texts) do
+      local distance
+      if query == "" then
+        distance = 1
+      else
+        distance = text:levenshtein(query)
+      end
+      table.insert(items, { text=text, distance=distance })
     end
 
-    local sorted_items = hs.fnutils.sortByKeyValues(weighted_items)
+    -- print(hs.inspect.inspect(fuzzy_query))
+    -- print(hs.inspect.inspect(items))
 
-    local new_choices = {}
-    for item in sorted_items do
-      table.insert(new_choices, { text=item })
+    choices = {}
+    for k,v in spairs(items, function(t, a, b)
+      if t[a].distance == t[b].distance then
+        return t[a].text < t[b].text
+      else
+        return t[a].distance < t[b].distance
+      end
+    end) do
+      table.insert(choices, { text=v.text })
     end
-
-    choices = new_choices
 
     chooser:choices(choices)
   end)
@@ -132,7 +169,7 @@ function mod.passchooser()
       end
     end)
 
-    hs.alert.show("Password for " .. item.text .. " copied!")
+    hs.alert.show("copied: " .. item.text)
   end
 
   enterBind = hs.hotkey.bind('', 'return', function()
