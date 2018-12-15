@@ -1,16 +1,26 @@
-# passchooser
+# PassChooser
 
-## Install
+macOS UI for selecting and copying password into clipboard
 
-Make sure you have working [`pass`](https://www.passwordstore.org/), `gpg-agent`, `pinentry-mac` and [Hammerspoon](https://github.com/Hammerspoon/hammerspoon).
+![](PassChooser.gif)
 
-1) Clone repo to `~/.hammerspoon/passchooser`,
+## Installation
 
-2) Require and bind `passchooser` from your `~/.hammerspoon/init.lua`:
+- Make sure [`pass`](https://www.passwordstore.org/) command works in the terminal
+
+- Install [Hammerspoon](http://www.hammerspoon.org/)
+
+- Install `PassChooser.spoon`
+    - Download [the `.zip`](https://github.com/daGrevis/PassChooser.spoon/archive/master.zip), uncompress it and double-click on the Spoon
+    - ...or clone the repo and move it to `~/.hammerspoon/Spoons/`
+
+- Load and configure the Spoon via `~/.hammerspoon/init.lua`
 
 ```lua
-local passchooser = require "passchooser/passchooser"
-
-passchooser.bind()
--- passchooser.bind({"cmd"}, "p")
+local PassChooser = hs.loadSpoon('PassChooser')
+PassChooser:bindHotkeys({
+  show={{'cmd'}, 'p'},
+})
 ```
+
+- Reload Hammerspoon

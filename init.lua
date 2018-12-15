@@ -1,3 +1,13 @@
+local obj = {}
+obj.__index = obj
+
+-- Metadata
+obj.name = 'PassChooser'
+obj.version = '0.1'
+obj.author = 'Raitis Stengrevics'
+obj.homepage = 'https://github.com/daGrevis/PassChooser.spoon'
+obj.license = 'MIT - https://opensource.org/licenses/MIT'
+
 -- http://lua-users.org/wiki/StringRecipes
 function string.ends(String, End)
    return End == '' or string.sub(String, -string.len(End)) == End
@@ -69,14 +79,12 @@ function string.levenshtein(str1, str2)
   return matrix[len1][len2]
 end
 
-local mod = {}
-
-function mod.passchooser()
+function obj:start()
   local front_app = hs.application.frontmostApplication()
 
-  local output = hs.execute("find ~/.password-store/ -type f")
+  local output = hs.execute('find ~/.password-store/ -type f')
 
-  local lines = hs.fnutils.filter(hs.fnutils.split(output, "\n"), function(line)
+  local lines = hs.fnutils.filter(hs.fnutils.split(output, '\n'), function(line)
     return line ~= '' and not line:ends('.gpg-id')
   end)
 
@@ -123,16 +131,13 @@ function mod.passchooser()
     local items = {}
     for i, text in pairs(matching_texts) do
       local distance
-      if query == "" then
+      if query == '' then
         distance = 1
       else
         distance = text:levenshtein(query)
       end
       table.insert(items, { text=text, distance=distance })
     end
-
-    -- print(hs.inspect.inspect(fuzzy_query))
-    -- print(hs.inspect.inspect(items))
 
     choices = {}
     for k,v in spairs(items, function(t, a, b)
@@ -151,13 +156,13 @@ function mod.passchooser()
   function copyPassword(index)
     local item = choices[index]
 
-    local password, status = hs.execute("pass show " .. item.text, true)
+    local password, status = hs.execute('pass show ' .. item.text, true)
 
     if not status then
       return
     end
 
-    local first_line = hs.fnutils.split(password, "\n")[1]
+    local first_line = hs.fnutils.split(password, '\n')[1]
 
     hs.pasteboard.setContents(first_line)
 
@@ -169,7 +174,7 @@ function mod.passchooser()
       end
     end)
 
-    hs.alert.show("copied: " .. item.text)
+    hs.alert.show('copied: ' .. item.text)
   end
 
   enterBind = hs.hotkey.bind('', 'return', function()
@@ -205,11 +210,20 @@ function mod.passchooser()
   chooser:show()
 end
 
-function mod.bind(mods, key)
-  mods = mods or {"cmd"}
-  key = key or "p"
+function obj:bindHotkeys(mapping)
+  if hotkey then
+      hotkey:delete()
+  end
 
-  hs.hotkey.bind(mods, key, mod.passchooser)
+  hotkey = hs.hotkey.new(
+    mapping['show'][1],
+    mapping['show'][2],
+    function()
+      obj:start()
+    end
+  ):enable()
+
+  return self
 end
 
-return mod
+return obj
