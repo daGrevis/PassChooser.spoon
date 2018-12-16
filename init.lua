@@ -79,10 +79,28 @@ function string.levenshtein(str1, str2)
   return matrix[len1][len2]
 end
 
+config = {
+  clearAfter=0,
+  storePath='~/.password-store/',
+}
+
+function obj:init(userConfig)
+  if not userConfig then
+    userConfig = {}
+  end
+
+  if userConfig.clearAfter then
+    config.clearAfter = userConfig.clearAfter
+  end
+  if userConfig.storePath then
+    config.storePath = userConfig.storePath
+  end
+end
+
 function obj:start()
   local front_app = hs.application.frontmostApplication()
 
-  local output = hs.execute('find ~/.password-store/ -type f')
+  local output = hs.execute('find ' .. config.storePath .. ' -type f')
 
   local lines = hs.fnutils.filter(hs.fnutils.split(output, '\n'), function(line)
     return line ~= '' and not line:ends('.gpg-id')
@@ -162,17 +180,19 @@ function obj:start()
       return
     end
 
-    local first_line = hs.fnutils.split(password, '\n')[1]
+    -- Assumes that password is on the first line just like pass does.
+    local password = hs.fnutils.split(password, '\n')[1]
 
-    hs.pasteboard.setContents(first_line)
+    hs.pasteboard.setContents(password)
 
-    local seconds = 45
-    hs.timer.doAfter(seconds, function()
-      local pb_contents = hs.pasteboard.getContents()
-      if first_line == pb_contents then
-        hs.pasteboard.setContents('')
-      end
-    end)
+    -- Clear pasteboard after N seconds if nothing else has been copied.
+    if config.clearAfter ~= 0 then
+      hs.timer.doAfter(config.clearAfter, function()
+        if password == hs.pasteboard.getContents() then
+          hs.pasteboard.setContents(' ')
+        end
+      end)
+    end
 
     hs.alert.show('copied: ' .. item.text)
   end
@@ -215,13 +235,16 @@ function obj:bindHotkeys(mapping)
       hotkey:delete()
   end
 
-  hotkey = hs.hotkey.new(
-    mapping['show'][1],
-    mapping['show'][2],
-    function()
-      obj:start()
-    end
-  ):enable()
+  local showMapping = mapping['show']
+  if showMapping then
+    hotkey = hs.hotkey.new(
+      showMapping[1],
+      showMapping[2],
+      function()
+        obj:start()
+      end
+    ):enable()
+  end
 
   return self
 end

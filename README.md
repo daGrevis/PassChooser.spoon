@@ -18,8 +18,19 @@ macOS UI for selecting and copying password into clipboard
 
 ```lua
 local PassChooser = hs.loadSpoon('PassChooser')
+
+-- Bind ⌘+p
 PassChooser:bindHotkeys({
   show={{'cmd'}, 'p'},
+})
+
+-- Optional config
+PassChooser:init({
+  -- Clear password from clipboard after N seconds
+  -- Defaults to 0 which disables this
+  clearAfter=10,
+  -- Path to GPG-encrypted passwords
+  storePath='~/.password-store/',
 })
 ```
 
