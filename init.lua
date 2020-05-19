@@ -79,7 +79,7 @@ function string.levenshtein(str1, str2)
   return matrix[len1][len2]
 end
 
-config = {
+local config = {
   clearAfter=0,
   storePath='~/.password-store/',
 }
@@ -111,7 +111,7 @@ function obj:start()
     return filename:sub(0, filename:len() - 4)
   end)
 
-  function restore()
+  local function restore()
     if enterBind['delete'] then enterBind:delete() end
     if escapeBind['delete'] then escapeBind:delete() end
     if ccBind['delete'] then ccBind:delete() end
@@ -126,7 +126,7 @@ function obj:start()
     front_app:activate()
   end
 
-  local chooser = hs.chooser.new(function(choosen)
+  local chooser = hs.chooser.new(function()
     restore()
   end)
 
@@ -147,7 +147,7 @@ function obj:start()
     end)
 
     local items = {}
-    for i, text in pairs(matching_texts) do
+    for _, text in pairs(matching_texts) do
       local distance
       if query == '' then
         distance = 1
@@ -158,7 +158,7 @@ function obj:start()
     end
 
     choices = {}
-    for k,v in spairs(items, function(t, a, b)
+    for _, v in spairs(items, function(t, a, b)
       if t[a].distance == t[b].distance then
         return t[a].text < t[b].text
       else
@@ -171,7 +171,7 @@ function obj:start()
     chooser:choices(choices)
   end)
 
-  function copyPassword(index)
+  local function copyPassword(index)
     local item = choices[index]
 
     local password, status = hs.execute('pass show ' .. item.text, true)
@@ -181,7 +181,7 @@ function obj:start()
     end
 
     -- Assumes that password is on the first line just like pass does.
-    local password = hs.fnutils.split(password, '\n')[1]
+    password = hs.fnutils.split(password, '\n')[1]
 
     hs.pasteboard.setContents(password)
 
