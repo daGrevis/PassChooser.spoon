@@ -199,18 +199,18 @@ function obj:start()
 
   enterBind = hs.hotkey.bind('', 'return', function()
     local id = chooser:selectedRow()
-    chooser:delete()
+    chooser:cancel()
     restore()
     copyPassword(id)
   end)
 
   escapeBind = hs.hotkey.bind('', 'escape', function()
-    chooser:delete()
+    chooser:cancel()
     restore()
   end)
 
   ccBind = hs.hotkey.bind({'ctrl'}, 'c', function()
-    chooser:delete()
+    chooser:cancel()
     restore()
   end)
 
@@ -219,7 +219,7 @@ function obj:start()
   while i <= 9 do
     local id = i
     numberBinds[#numberBinds + 1] = hs.hotkey.bind({'cmd'}, tostring(i), function()
-      chooser:delete()
+      chooser:cancel()
       restore()
       copyPassword(id)
     end)
@@ -232,7 +232,7 @@ end
 
 function obj:bindHotkeys(mapping)
   if hotkey then
-      hotkey:delete()
+      hotkey:cancel()
   end
 
   local showMapping = mapping['show']
