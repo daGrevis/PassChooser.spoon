@@ -82,6 +82,7 @@ end
 local config = {
   clearAfter=0,
   storePath='~/.password-store/',
+  image=nil,
 }
 
 function obj:init(userConfig)
@@ -94,6 +95,9 @@ function obj:init(userConfig)
   end
   if userConfig.storePath then
     config.storePath = userConfig.storePath
+  end
+  if userConfig.image then
+    config.image = userConfig.image
   end
 end
 
@@ -165,7 +169,7 @@ function obj:start()
         return t[a].distance < t[b].distance
       end
     end) do
-      table.insert(choices, { text=v.text })
+      table.insert(choices, { text=v.text, image=config.image })
     end
 
     chooser:choices(choices)
