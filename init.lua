@@ -100,7 +100,7 @@ end
 function obj:start()
   local front_app = hs.application.frontmostApplication()
 
-  local output = hs.execute('find ' .. config.storePath .. ' -type f')
+  local output = hs.execute('find ' .. config.storePath .. ' -type f -not -path "*.git/*"')
 
   local lines = hs.fnutils.filter(hs.fnutils.split(output, '\n'), function(line)
     return line ~= '' and not line:ends('.gpg-id')
