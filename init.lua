@@ -100,17 +100,6 @@ end
 function obj:start()
   local front_app = hs.application.frontmostApplication()
 
-  local output = hs.execute('find ' .. config.storePath .. ' -type f')
-
-  local lines = hs.fnutils.filter(hs.fnutils.split(output, '\n'), function(line)
-    return line ~= '' and not line:ends('.gpg-id')
-  end)
-
-  local all_texts = hs.fnutils.map(lines, function(line)
-    local filename = hs.fnutils.split(line, '//')[2]
-    return filename:sub(0, filename:len() - 4)
-  end)
-
   local function restore()
     if enterBind['delete'] then enterBind:delete() end
     if escapeBind['delete'] then escapeBind:delete() end
@@ -131,9 +120,9 @@ function obj:start()
   end)
 
   local choices = {}
-  chooser:queryChangedCallback(function()
-    local query = chooser:query()
+  local all_texts = {}
 
+  local function updateChoices(query)
     local chars = {}
     for i = 1, #query do
       table.insert(chars, query:sub(i, i))
@@ -169,32 +158,40 @@ function obj:start()
     end
 
     chooser:choices(choices)
+  end
+
+  chooser:queryChangedCallback(function()
+    updateChoices(chooser:query())
   end)
 
   local function copyPassword(index)
     local item = choices[index]
+    if not item then return end
 
-    local password, status = hs.execute('pass show ' .. item.text, true)
+    -- Run via the user's login+interactive shell so `pass` is found wherever it's installed.
+    -- item.text is passed as a positional arg to avoid shell injection.
+    hs.task.new(os.getenv('SHELL') or '/bin/zsh', function(exitCode, stdOut, stdErr)
+      if exitCode ~= 0 then
+        hs.alert.show('pass error: ' .. (stdErr or ''))
+        return
+      end
 
-    if not status then
-      return
-    end
+      -- Assumes that password is on the first line just like pass does.
+      local password = hs.fnutils.split(stdOut, '\n')[1]
 
-    -- Assumes that password is on the first line just like pass does.
-    password = hs.fnutils.split(password, '\n')[1]
+      hs.pasteboard.setContents(password)
 
-    hs.pasteboard.setContents(password)
+      -- Clear pasteboard after N seconds if nothing else has been copied.
+      if config.clearAfter ~= 0 then
+        hs.timer.doAfter(config.clearAfter, function()
+          if password == hs.pasteboard.getContents() then
+            hs.pasteboard.setContents(' ')
+          end
+        end)
+      end
 
-    -- Clear pasteboard after N seconds if nothing else has been copied.
-    if config.clearAfter ~= 0 then
-      hs.timer.doAfter(config.clearAfter, function()
-        if password == hs.pasteboard.getContents() then
-          hs.pasteboard.setContents(' ')
-        end
-      end)
-    end
-
-    hs.alert.show('copied: ' .. item.text)
+      hs.alert.show('copied: ' .. item.text)
+    end, {'-lic', 'pass show "$1"', 'passchooser', item.text}):start()
   end
 
   enterBind = hs.hotkey.bind('', 'return', function()
@@ -228,6 +225,25 @@ function obj:start()
   end
 
   chooser:show()
+
+  -- Read the password store async so the chooser stays responsive while find runs.
+  local store_path = config.storePath:gsub('^~', os.getenv('HOME'))
+  hs.task.new('/usr/bin/find', function(exitCode, stdOut, stdErr)
+    if exitCode ~= 0 then return end
+
+    local lines = hs.fnutils.filter(hs.fnutils.split(stdOut, '\n'), function(line)
+      return line ~= '' and not line:ends('.gpg-id')
+    end)
+
+    all_texts = hs.fnutils.map(lines, function(line)
+      local filename = hs.fnutils.split(line, '//')[2]
+      return filename:sub(0, filename:len() - 4)
+    end)
+
+    if chooser:isVisible() then
+      updateChoices(chooser:query())
+    end
+  end, {store_path, '-type', 'f'}):start()
 end
 
 function obj:bindHotkeys(mapping)
